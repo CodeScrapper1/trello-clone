@@ -1,0 +1,163 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String  @db.ObjectId
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionToken String   @unique
+  userId       String   @db.ObjectId
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+
+  orgIds        String[]       @db.ObjectId
+  organizations Organization[] @relation(fields: [orgIds], references: [id])
+
+  boardIds String[] @db.ObjectId
+  boards   Board[]  @relation(fields: [boardIds], references: [id])
+
+  cardIds String[] @db.ObjectId
+  cards   Card[]   @relation(fields: [cardIds], references: [id])
+}
+
+model VerificationToken {
+  identifier String   @id @default(auto()) @map("_id") @db.ObjectId
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Organization {
+  id    String @id @default(auto()) @map("_id") @db.ObjectId
+  title String
+  image String
+
+  userIds String[] @db.ObjectId
+  users   User[]   @relation(fields: [userIds], references: [id])
+
+  boards Board[]
+
+  createdAt DateTime @default(now())
+}
+
+model Board {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  orgId        String       @db.ObjectId
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  title String
+  image String
+
+  userIds String[] @db.ObjectId
+  Users   User[]   @relation(fields: [userIds], references: [id])
+
+  lists     List[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Card      Card[]
+}
+
+model List {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  title   String
+  order   Int
+  boardId String @db.ObjectId
+  board   Board  @relation(fields: [boardId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  cards Card[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Card {
+  id    String @id @default(auto()) @map("_id") @db.ObjectId
+  title String
+  order Int
+
+  description String?
+  listId      String   @db.ObjectId
+  list        List     @relation(fields: [listId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  boardId     String   @db.ObjectId
+  board       Board    @relation(fields: [boardId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  userIds     String[] @db.ObjectId
+  users       User[]   @relation(fields: [userIds], references: [id])
+
+  label     Label[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum ACTION {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum TABLE_TYPE {
+  BOARD
+  LIST
+  CARD
+}
+
+model AudLog {
+  id         String     @id @default(auto()) @map("_id") @db.ObjectId
+  orgId      String?
+  action     ACTION
+  tableId    String
+  tableType  TABLE_TYPE
+  tableTitle String
+  userId     String     @db.ObjectId
+  userImage  String
+  userName   String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Label {
+  id    String @id @default(auto()) @map("_id") @db.ObjectId
+  name  String
+  color String
+
+  cardId String? @db.ObjectId
+  card   Card?   @relation(fields: [cardId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+}
